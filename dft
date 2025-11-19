@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+
+import numpy as np
+import matplotliv.pyplot as plt
+import scipy.io.wavfile as wav
+
+filename = 'voice.wav'
+fs, data = wav.read(filename) # fs: サンプリング周波数, data: 音声データ
+
+# ステレオの場合はモノラルに変換
+if data.ndim > 1:
+	data = data[:, 0]
+
+start_point = 5000
+N = 1024 # 窓長
+x = data[start_point : start_point + N]
+
+X = np.fft.fftfreq(N, d=1/fs)
+
+# パワースペクトルの計算
+power_spectrum = np.abs(X)**2
+
+# グラフィカル表示
+plt.figure(figsize=(12, 8))
+
+# 時間波形のプロット
+plt.subplot(2, 1, 1)
+time_axis = np.arange(N) / fs
+plt.plot(time_axis, x)
+plt.title('Time Waveform(時間波形)')
+plt.xlabel('Time[s]')
+plt.ylabel('Amplitude')
+plt.grid()
+
+# パワースペクトルのプロット
+plt.subplot(2, 1, 2)
+# ナイキスト周波数まで表示
+valid_range = int(N/2)
+plt.plot(freqs[:valid_range], power_spectrum[:valid_range])
+plt.title('Power Spectrum(パワースペクトル)')
+plt.xlabel('Frequency[Hz]')
+plt.ylabel('Power')
+plt.grid()
+
+plt.tight_layout()
+plt.show
+
+
+
