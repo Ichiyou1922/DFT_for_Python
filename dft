@@ -3,6 +3,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as wav
+# --- 日本語フォント設定 ---
+
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = [
+    'Noto Sans CJK JP', 
+    'TakaoPGothic', 
+    'VL PGothic', 
+    'Droid Sans Fallback', 
+    'IPAPGothic', 
+    'sans-serif'
+]
+# マイナス記号が文字化けしないようにする設定
+plt.rcParams['axes.unicode_minus'] = False
 
 filename = 'voice.wav'
 fs, data = wav.read(filename) # fs: サンプリング周波数, data: 音声データ
