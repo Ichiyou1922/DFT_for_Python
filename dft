@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
-import matplotliv.pyplot as plt
+import matplotlib.pyplot as plt
 import scipy.io.wavfile as wav
 
 filename = 'voice.wav'
@@ -15,7 +15,8 @@ start_point = 5000
 N = 1024 # 窓長
 x = data[start_point : start_point + N]
 
-X = np.fft.fftfreq(N, d=1/fs)
+X = np.fft.fft(x)
+freqs = np.fft.fftfreq(N, d=1/fs)
 
 # パワースペクトルの計算
 power_spectrum = np.abs(X)**2
