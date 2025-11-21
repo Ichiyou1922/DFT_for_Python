@@ -1,8 +1,12 @@
 #!/usr/bin/python3
 
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io.wavfile as wav
+import sys
+
 # --- 日本語フォント設定 ---
 
 plt.rcParams['font.family'] = 'sans-serif'
@@ -17,47 +21,81 @@ plt.rcParams['font.sans-serif'] = [
 # マイナス記号が文字化けしないようにする設定
 plt.rcParams['axes.unicode_minus'] = False
 
-filename = 'voice.wav'
-fs, data = wav.read(filename) # fs: サンプリング周波数, data: 音声データ
+filename = 'filename.wav'
+try:
+	fs, data = wav.read(filename) # fs: サンプリング周波数, data: 音声データ
+except FileNotFoundError:
+	print("File not found.")
+	sys.exit(1)
 
-# ステレオの場合はモノラルに変換
 if data.ndim > 1:
 	data = data[:, 0]
 
-start_point = 5000
 N = 1024 # 窓長
-x = data[start_point : start_point + N]
+start_point = int(len(data) / 2)
 
-X = np.fft.fft(x)
+if len(data) < N:
+	print("エラー: 音声データが短すぎます．3秒以上録音してください")
+	sys.exit(1)
+print(f"全データ長: {len(data)} サンプル ({len(data)/fs:.2f}秒)")
+print(f"解析開始位置: {start_point} サンプル目 ({start_point/fs:.2f}秒地点)")
+
+x = data[start_point : start_point + N]
+window = np.hanning(N)
+x_windowed = x * window
+
+spec = np.fft.fft(x_windowed)
+amplitude_spec = np.abs(spec)
+
+log_spec = np.log(amplitude_spec + 1e-10)  # 対数変換（0除算防止のため微小値を加算）
+spec_db = 20 * np.log10(amplitude_spec + 1e-10)  # dB変換
+
+cepstrum = np.fft.ifft(log_spec).real
+
+lifter_cutoff = 100
+cepstrum_low = cepstrum.copy()
+cepstrum_low[lifter_cutoff : N - lifter_cutoff] = 0
+
+envelope_log = np.fft.fft(cepstrum_low).real
+envelope_db = 20 * (envelope_log / np.log(10))
+
 freqs = np.fft.fftfreq(N, d=1/fs)
 
-# パワースペクトルの計算
-power_spectrum = np.abs(X)**2
-
-# グラフィカル表示
 plt.figure(figsize=(12, 8))
 
-# 時間波形のプロット
+# 時間波形
 plt.subplot(2, 1, 1)
 time_axis = np.arange(N) / fs
-plt.plot(time_axis, x)
-plt.title('Time Waveform(時間波形)')
-plt.xlabel('Time[s]')
+plt.plot(time_axis, x_windowed) # 窓関数適用後の波形を表示するのが誠実
+plt.title('Time Waveform (Windowed)')
+plt.xlabel('Time [s]')
 plt.ylabel('Amplitude')
 plt.grid()
 
-# パワースペクトルのプロット
+# パワースペクトル(dB) と 包絡線
 plt.subplot(2, 1, 2)
-# ナイキスト周波数まで表示
-valid_range = int(N/2)
-plt.plot(freqs[:valid_range], power_spectrum[:valid_range])
-plt.title('Power Spectrum(パワースペクトル)')
-plt.xlabel('Frequency[Hz]')
-plt.ylabel('Power')
+valid_range = int(N/2) # ナイキスト周波数まで
+
+# 生のスペクトル（細線・薄い色）
+plt.plot(freqs[:valid_range], spec_db[:valid_range], 
+         label='Raw Spectrum', alpha=0.5, color='gray', linewidth=1.0)
+
+# スペクトル包絡（太線・目立つ色）
+plt.plot(freqs[:valid_range], envelope_db[:valid_range], 
+         label='Spectral Envelope (Formant)', color='red', linewidth=2.5)
+
+plt.title(f'Log Spectrum & Envelope (Cepstrum Method) - sample={filename}')
+plt.xlabel('Frequency [Hz]')
+plt.ylabel('Magnitude [dB]')
+plt.xlim(0, 4000) # 重要な帯域にズーム
+plt.ylim(bottom=np.max(spec_db)-80) # ピークから-80dBまでを表示
+plt.legend()
 plt.grid()
 
 plt.tight_layout()
-plt.show
+output_filename = filename.replace('.wav', '_dft.png')
+plt.savefig(output_filename)
+print(f"グラフを保存しました: {output_filename}")
 
 
 

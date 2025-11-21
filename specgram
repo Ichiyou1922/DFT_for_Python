@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.io.wavfile as wav
+import sys
+
+# --- 設定 ---
+plt.rcParams['font.family'] = 'sans-serif'
+FILENAME = 'aiueo.wav'
+# -----------
+
+try:
+    fs, data = wav.read(FILENAME)
+except FileNotFoundError:
+    print(f"Error: {FILENAME} not found.")
+    sys.exit(1)
+
+if data.ndim > 1:
+    data = data[:, 0]
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+
+# 1. 時間波形
+time_axis = np.arange(len(data)) / fs
+ax1.plot(time_axis, data, linewidth=0.5)
+ax1.set_title(f'Time Waveform - {FILENAME}')
+ax1.set_ylabel('Amplitude')
+ax1.grid(True)
+
+# 2. スペクトログラム
+# NFFT: 窓長
+# noverlap: 窓をずらす際の重なり.滑らかにするため大きく取る.
+Pxx, freqs, bins, im = ax2.specgram(data, NFFT=1024, Fs=fs, noverlap=512, cmap='inferno')
+
+ax2.set_ylim(0, 5000) # 声の主要成分（フォルマント）が見える範囲にズーム
+ax2.set_title('Spectrogram')
+ax2.set_ylabel('Frequency [Hz]')
+ax2.set_xlabel('Time [s]')
+
+# カラーバー（色の濃さがパワーを表す）
+cbar = fig.colorbar(im, ax=ax2)
+cbar.set_label('Intensity [dB]')
+
+plt.tight_layout()
+plt.savefig('spectrogram_result.png')
+print("spectrogram_result.png を保存しました。")
